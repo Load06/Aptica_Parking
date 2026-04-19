@@ -5,3 +5,6 @@
 [deploy]
   startCommand = "npx serve dist -s -l $PORT"
   restartPolicyType = "ON_FAILURE"
+
+[variables]
+  NIXPACKS_NODE_VERSION = "20"
