@@ -53,6 +53,7 @@ model User {
   reservations      Reservation[]
   pushSubscriptions PushSubscription[]
   auditLogs         AuditLog[]
+  waitingQueue      WaitingQueue[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,6 +132,18 @@ model PushSubscription {
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
+}
+
+model WaitingQueue {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  date      DateTime @db.Date
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([date, position])
 }
 
 model AuditLog {

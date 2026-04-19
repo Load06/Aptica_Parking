@@ -135,7 +135,7 @@ export function HomeScreen({ onLiberate }: HomeProps) {
                 </button>
               )}
               <button
-                onClick={() => navigate('/mapa')}
+                onClick={() => navigate('/mapa', { state: { highlightPlazaId: plaza?.id, floor: plaza?.floor } })}
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
               >
@@ -251,7 +251,7 @@ export function HomeScreen({ onLiberate }: HomeProps) {
           <div className="grid grid-cols-2 gap-2.5">
             {[
               { t: 'Liberar varios días', s: 'Rango o recurrente', icon: <RotateCw size={22} className="text-purple" />, action: onLiberate },
-              { t: 'Mi plaza en el mapa', s: plaza ? `${plaza.floor} · ${plaza.num}` : '', icon: <Map size={22} className="text-purple" />, action: () => navigate('/mapa') },
+              { t: 'Mi plaza en el mapa', s: plaza ? `${plaza.floor} · ${plaza.num}` : '', icon: <Map size={22} className="text-purple" />, action: () => navigate('/mapa', { state: { highlightPlazaId: plaza?.id, floor: plaza?.floor } }) },
             ].map((q, i) => (
               <button
                 key={i}

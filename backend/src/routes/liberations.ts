@@ -59,20 +59,77 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     )
   );
 
-  const succeeded = created.filter(r => r.status === 'fulfilled').length;
+  const succeededResults = created.filter(r => r.status === 'fulfilled') as PromiseFulfilledResult<{ id: string; date: Date; plazaId: string; userId: string; halfDay: string; recurrenceId: string | null; createdAt: Date }>[];
+  const succeeded = succeededResults.length;
 
   await prisma.auditLog.create({
     data: { userId: req.userId, action: 'plaza_liberated', detail: `${plazaId} × ${succeeded} días` },
   });
 
-  // Push notification a usuarios floating
-  await sendPushToRole('floating', {
-    title: '🚗 Nueva plaza disponible',
-    body: `${user.name} liberó la plaza ${plaza.num} (${plaza.floor})`,
-    url: '/reservar',
-  });
+  // Para cada liberación creada, intentar auto-asignar desde la cola
+  const rules = await prisma.adminRules.findUniqueOrThrow({ where: { id: 1 } });
+  let assignedCount = 0;
 
-  res.status(201).json({ created: succeeded });
+  for (const result of succeededResults) {
+    const lib = result.value;
+    const libDate = lib.date;
+
+    // Obtener cola para esa fecha ordenada por posición
+    const queueEntries = await prisma.waitingQueue.findMany({
+      where: { date: libDate },
+      orderBy: { position: 'asc' },
+    });
+
+    let assigned = false;
+    for (const entry of queueEntries) {
+      // Verificar elegibilidad: sin reserva confirmada ese día
+      const existingRes = await prisma.reservation.findFirst({
+        where: { userId: entry.userId, date: libDate, status: 'confirmed' },
+      });
+      if (existingRes) continue;
+
+      // Verificar cupo semanal
+      const ref = new Date(libDate);
+      const day = ref.getDay() === 0 ? 7 : ref.getDay();
+      const monday = new Date(ref); monday.setDate(ref.getDate() - (day - 1)); monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23, 59, 59, 999);
+      const weekCount = await prisma.reservation.count({
+        where: { userId: entry.userId, date: { gte: monday, lte: sunday }, status: 'confirmed' },
+      });
+      if (weekCount >= rules.weeklyQuotaPerUser) continue;
+
+      // Elegible → crear reserva y eliminar de la cola
+      await prisma.reservation.create({
+        data: {
+          plazaId:      lib.plazaId,
+          userId:       entry.userId,
+          liberationId: lib.id,
+          date:         libDate,
+          halfDay:      lib.halfDay as never,
+        },
+      });
+      await prisma.waitingQueue.delete({ where: { id: entry.id } });
+      await sendPushToUser(entry.userId, {
+        title: '🎉 Te hemos asignado una plaza',
+        body: `Plaza ${plaza.num} (${plaza.floor}) reservada automáticamente para ti.`,
+        url: '/',
+      });
+      assigned = true;
+      assignedCount++;
+      break;
+    }
+
+    // Si nadie en cola era elegible, notificar a todos los floating
+    if (!assigned) {
+      await sendPushToRole('floating', {
+        title: '🚗 Nueva plaza disponible',
+        body: `${user.name} liberó la plaza ${plaza.num} (${plaza.floor})`,
+        url: '/',
+      });
+    }
+  }
+
+  res.status(201).json({ created: succeeded, assigned: assignedCount });
 });
 
 // DELETE /liberations/:id

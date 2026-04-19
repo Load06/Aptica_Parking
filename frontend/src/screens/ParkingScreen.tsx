@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Key, Map, RotateCw, Undo2, X } from 'lucide-react';
+import { AlertTriangle, Clock, Key, Map, RotateCw, Undo2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import type { Liberation, Reservation } from '../types';
@@ -27,6 +27,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
   const [quota, setQuota] = useState({ used: 0, quota: 3 });
   const [rules, setRules] = useState({ advanceBookingHours: 48 });
   const [stats, setStats] = useState({ liberated: 0, reserved: 0, users: 0 });
+  const [myQueueEntry, setMyQueueEntry] = useState<{ id: string; position: number } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [urgentLib, setUrgentLib] = useState<Liberation | null>(null);
@@ -54,6 +55,9 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
     });
     if (user?.role !== 'admin') {
       api.get(`/reservations/my/weekly?date=${ymd(selectedDate)}`).then(r => setQuota(r.data));
+      api.get(`/queue?date=${d}`).then(r => {
+        setMyQueueEntry(r.data.inQueue ? { id: r.data.id, position: r.data.position } : null);
+      });
     }
     if (user?.role === 'admin') {
       Promise.all([
@@ -76,6 +80,8 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
     if (user?.role !== 'admin') {
       const qr = await api.get(`/reservations/my/weekly?date=${d}`);
       setQuota(qr.data);
+      const queueR = await api.get(`/queue?date=${d}`);
+      setMyQueueEntry(queueR.data.inQueue ? { id: queueR.data.id, position: queueR.data.position } : null);
     }
   };
 
@@ -114,11 +120,32 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
     if (!urgentLib || urgentReason.trim().length < 10) return;
     setActionLoading('urgent');
     try {
-      await api.post('/reservations/urgent', { liberationId: urgentLib.id, reason: urgentReason });
+      const { data: created } = await api.post<Reservation>('/reservations/urgent', { liberationId: urgentLib.id, reason: urgentReason });
+      setMyReservation(created);
+      setQuota(prev => ({ ...prev, used: prev.used + 1 }));
       setUrgentLib(null); setUrgentReason('');
       await refreshDate();
     } catch (err: any) {
       setError(err.response?.data?.error ?? 'Error en reserva urgente');
+    } finally { setActionLoading(null); }
+  };
+
+  const handleJoinQueue = async () => {
+    setActionLoading('queue'); setError('');
+    try {
+      const { data } = await api.post<{ id: string; position: number }>('/queue', { date: ymd(selectedDate) });
+      setMyQueueEntry(data);
+    } catch (err: any) {
+      setError(err.response?.data?.error ?? 'Error al unirse a la cola');
+    } finally { setActionLoading(null); }
+  };
+
+  const handleLeaveQueue = async () => {
+    if (!myQueueEntry) return;
+    setActionLoading('queue');
+    try {
+      await api.delete(`/queue/${myQueueEntry.id}`);
+      setMyQueueEntry(null);
     } finally { setActionLoading(null); }
   };
 
@@ -266,7 +293,26 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
 
       {error && <p className="text-[13px] text-red font-semibold bg-red-soft px-3 py-2 rounded-md mb-3">{error}</p>}
 
-      {libs.length === 0 && (
+      {libs.length === 0 && user?.role === 'floating' && !myReservation && (
+        <div className="rounded-xl border border-dashed border-gray-line bg-white p-5 text-center mb-2">
+          <p className="text-[14px] font-bold text-ink mb-1">No hay plazas disponibles</p>
+          <p className="text-[13px] text-gray-mid font-medium mb-4">
+            {myQueueEntry
+              ? `Estás en la posición Nº ${myQueueEntry.position} de la cola. Te avisaremos si se libera una plaza.`
+              : 'Apúntate a la cola y te asignaremos la primera plaza que se libere.'}
+          </p>
+          {myQueueEntry ? (
+            <Button variant="ghost" fullWidth onClick={handleLeaveQueue} disabled={actionLoading === 'queue'}>
+              <Clock size={15} /> Salir de la cola
+            </Button>
+          ) : (
+            <Button variant="secondary" fullWidth onClick={handleJoinQueue} disabled={actionLoading === 'queue'}>
+              <Clock size={15} /> Unirse a la cola
+            </Button>
+          )}
+        </div>
+      )}
+      {libs.length === 0 && user?.role !== 'floating' && (
         <p className="text-[14px] text-gray-mid font-medium py-4 text-center">No hay plazas liberadas para este día.</p>
       )}
 
@@ -332,7 +378,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
           <div className="grid grid-cols-2 gap-2.5">
             {[
               { t: 'Liberar varios días', s: 'Rango o recurrente', icon: <RotateCw size={22} className="text-purple" />, action: onLiberate },
-              { t: 'Mi plaza en el mapa', s: plaza ? `${plaza.floor} · ${plaza.num}` : '', icon: <Map size={22} className="text-purple" />, action: () => navigate('/mapa') },
+              { t: 'Mi plaza en el mapa', s: plaza ? `${plaza.floor} · ${plaza.num}` : '', icon: <Map size={22} className="text-purple" />, action: () => navigate('/mapa', { state: { highlightPlazaId: plaza?.id, floor: plaza?.floor } }) },
             ].map((q, i) => (
               <button key={i} onClick={q.action} className="bg-white rounded-xl p-3.5 border border-gray-line text-left active:bg-gray-bg transition-colors">
                 <div className="w-[38px] h-[38px] rounded-[10px] bg-purple-soft flex items-center justify-center mb-2.5">{q.icon}</div>

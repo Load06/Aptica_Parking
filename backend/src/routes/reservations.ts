@@ -140,6 +140,7 @@ router.post('/urgent', verifyJWT, async (req: AuthRequest, res: Response) => {
       urgent:       true,
       reason:       body.data.reason,
     },
+    include: { plaza: true },
   });
 
   await prisma.auditLog.create({

@@ -8,6 +8,7 @@ import liberationsRouter  from './routes/liberations';
 import reservationsRouter from './routes/reservations';
 import adminRouter        from './routes/admin';
 import pushRouter         from './routes/push';
+import queueRouter        from './routes/queue';
 import { verifyJWT }      from './middleware/auth';
 import { prisma }         from './lib/prisma';
 
@@ -22,6 +23,7 @@ app.use('/liberations',  liberationsRouter);
 app.use('/reservations', reservationsRouter);
 app.use('/admin',        adminRouter);
 app.use('/push',         pushRouter);
+app.use('/queue',        queueRouter);
 
 // Reglas de negocio — lectura pública para todos los usuarios autenticados
 app.get('/rules', verifyJWT, async (_req, res) => {
