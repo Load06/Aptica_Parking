@@ -1,0 +1,14 @@
+[build]
+  builder = "NIXPACKS"
+
+[[services]]
+  name = "backend"
+  source = "backend"
+  startCommand = "npm run start"
+  buildCommand = "npm install && npx prisma generate && npm run build"
+
+[[services]]
+  name = "frontend"
+  source = "frontend"
+  startCommand = "npx serve dist -s -l $PORT"
+  buildCommand = "npm install && npm run build"

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip \"Parking Aptica.zip\" -d .)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npm create *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"const wp=require\\('web-push'\\); const keys=wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:', keys.publicKey\\); console.log\\('PRIVATE:', keys.privateKey\\);\")"
+    ]
+  }
+}

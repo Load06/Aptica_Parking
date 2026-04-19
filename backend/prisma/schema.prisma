@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  fixed
+  floating
+  admin
+  guest
+}
+
+enum UserStatus {
+  invited
+  pending
+  active
+  disabled
+}
+
+enum HalfDay {
+  full
+  am
+  pm
+}
+
+enum ReservationStatus {
+  confirmed
+  displaced
+  cancelled
+}
+
+model User {
+  id              String      @id @default(cuid())
+  name            String
+  email           String      @unique
+  passwordHash    String?
+  phone           String?
+  plate           String?
+  role            Role        @default(floating)
+  status          UserStatus  @default(pending)
+  avatarColor     String      @default("#6A1873")
+  resetToken      String?
+  resetTokenExp   DateTime?
+
+  assignedPlaza   Plaza?      @relation("PlazaUsers", fields: [assignedPlazaId], references: [id])
+  assignedPlazaId String?
+
+  liberations       Liberation[]
+  reservations      Reservation[]
+  pushSubscriptions PushSubscription[]
+  auditLogs         AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Plaza {
+  id        String  @id
+  floor     String
+  num       Int
+  bay       String
+  col       String?
+  row       Int
+  isRamp    Boolean @default(false)
+  isService Boolean @default(false)
+  isMoto    Boolean @default(false)
+  isShared  Boolean @default(false)
+
+  assignedUsers User[]  @relation("PlazaUsers")
+
+  liberations  Liberation[]
+  reservations Reservation[]
+
+  createdAt DateTime @default(now())
+}
+
+model Liberation {
+  id           String   @id @default(cuid())
+  plaza        Plaza    @relation(fields: [plazaId], references: [id])
+  plazaId      String
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String
+  date         DateTime @db.Date
+  halfDay      HalfDay  @default(full)
+  recurrenceId String?
+
+  reservation Reservation?
+
+  createdAt DateTime @default(now())
+
+  @@unique([plazaId, date, halfDay])
+}
+
+model Reservation {
+  id           String            @id @default(cuid())
+  plaza        Plaza             @relation(fields: [plazaId], references: [id])
+  plazaId      String
+  user         User              @relation(fields: [userId], references: [id])
+  userId       String
+  liberation   Liberation        @relation(fields: [liberationId], references: [id])
+  liberationId String            @unique
+  date         DateTime          @db.Date
+  halfDay      HalfDay           @default(full)
+  status       ReservationStatus @default(confirmed)
+  urgent       Boolean           @default(false)
+  reason       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminRules {
+  id                  Int     @id @default(1)
+  advanceBookingHours Int     @default(48)
+  weeklyQuotaPerUser  Int     @default(3)
+  monthlyUrgentQuota  Int     @default(3)
+  notifyOnLiberation  Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+}
