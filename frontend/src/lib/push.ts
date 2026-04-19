@@ -18,7 +18,7 @@ export async function subscribePush(): Promise<boolean> {
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return false;
 
-  const reg = await navigator.serviceWorker.register('/sw.js');
+  const reg = await navigator.serviceWorker.ready;
   const vapidKey = await getVapidKey();
 
   const sub = await reg.pushManager.subscribe({
@@ -36,8 +36,8 @@ export async function subscribePush(): Promise<boolean> {
 }
 
 export async function unsubscribePush(): Promise<void> {
-  const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-  if (!reg) return;
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;
   await api.delete('/push/subscribe', { data: { endpoint: sub.endpoint } });
@@ -46,8 +46,7 @@ export async function unsubscribePush(): Promise<void> {
 
 export async function isPushSubscribed(): Promise<boolean> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-  const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-  if (!reg) return false;
+  const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
   return !!sub;
 }
