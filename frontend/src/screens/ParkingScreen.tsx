@@ -4,7 +4,7 @@ import { AlertTriangle, Key, Map, RotateCw, Undo2, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import type { Liberation, Reservation } from '../types';
-import { Avatar, Badge, BottomSheet, Button, Card } from '../components/ui';
+import { Badge, BottomSheet, Button, Card } from '../components/ui';
 import { WeekStrip } from '../components/WeekStrip';
 import { ymd, HALF_DAY_LABELS } from '../lib/utils';
 
