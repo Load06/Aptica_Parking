@@ -8,6 +8,8 @@ import liberationsRouter  from './routes/liberations';
 import reservationsRouter from './routes/reservations';
 import adminRouter        from './routes/admin';
 import pushRouter         from './routes/push';
+import { verifyJWT }      from './middleware/auth';
+import { prisma }         from './lib/prisma';
 
 const app = express();
 
@@ -20,6 +22,12 @@ app.use('/liberations',  liberationsRouter);
 app.use('/reservations', reservationsRouter);
 app.use('/admin',        adminRouter);
 app.use('/push',         pushRouter);
+
+// Reglas de negocio — lectura pública para todos los usuarios autenticados
+app.get('/rules', verifyJWT, async (_req, res) => {
+  const rules = await prisma.adminRules.findUniqueOrThrow({ where: { id: 1 } });
+  res.json(rules);
+});
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

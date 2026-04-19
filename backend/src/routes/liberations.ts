@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import { verifyJWT, AuthRequest } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
-import { sendPushToRole } from '../lib/push';
+import { sendPushToRole, sendPushToUser } from '../lib/push';
 
 const router = Router();
 
@@ -79,15 +79,28 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
 router.delete('/:id', verifyJWT, async (req: AuthRequest, res: Response) => {
   const lib = await prisma.liberation.findUniqueOrThrow({
     where: { id: req.params.id },
-    include: { reservation: true },
+    include: {
+      reservation: true,
+      plaza: { select: { num: true, floor: true } },
+    },
   });
 
   if (lib.userId !== req.userId) {
     res.status(403).json({ error: 'No puedes cancelar esta liberación' }); return;
   }
+
   if (lib.reservation) {
-    await prisma.reservation.update({ where: { liberationId: lib.id }, data: { status: 'cancelled' } });
+    if (lib.reservation.status === 'confirmed') {
+      await sendPushToUser(lib.reservation.userId, {
+        title: '🔙 Plaza recuperada por su titular',
+        body: `La plaza ${lib.plaza.num} (${lib.plaza.floor}) ha sido recuperada. Tu reserva ha sido cancelada.`,
+        url: '/reservar',
+      });
+    }
+    // Borrar reservation antes que liberation (FK constraint sin onDelete Cascade)
+    await prisma.reservation.delete({ where: { id: lib.reservation.id } });
   }
+
   await prisma.liberation.delete({ where: { id: req.params.id } });
   res.json({ message: 'Liberación cancelada' });
 });

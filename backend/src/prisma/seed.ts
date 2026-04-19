@@ -88,15 +88,15 @@ const FIXED_USERS: Array<{
   },
   { name: 'Jose Vicente',           email: 'josev.rodriguez@aptica.es',    plazaLocalId: 'R-I-22', floor: 'P-2', avatarColor: '#7296BC' },
   { name: 'Javier Peñín',          email: 'javier.penin@aptica.es',       plazaLocalId: 'R-I-25', floor: 'P-2', avatarColor: '#6A1873' },
-  { name: 'Agustín Gómez',         email: 'agustin.gomez@aptica.es',      plazaLocalId: 'R-I-41', floor: 'P-2', avatarColor: '#58457A' },
-  { name: 'Javier de Paz',         email: 'javier.depaz@aptica.es',       plazaLocalId: 'R-I-42', floor: 'P-2', avatarColor: '#7296BC' },
-  { name: 'Josué López',           email: 'josue.lopez@aptica.es',        plazaLocalId: 'R-I-43', floor: 'P-2', avatarColor: '#6A1873' },
+  { name: 'Agustín Gómez',         email: 'agustin.gomez@aptica.es',      plazaLocalId: 'R-O-41', floor: 'P-2', avatarColor: '#58457A' },
+  { name: 'Javier de Paz',         email: 'javier.depaz@aptica.es',       plazaLocalId: 'R-O-42', floor: 'P-2', avatarColor: '#7296BC' },
+  { name: 'Josué López',           email: 'josue.lopez@aptica.es',        plazaLocalId: 'R-O-43', floor: 'P-2', avatarColor: '#6A1873' },
 ];
 
 // Plazas con propiedades especiales (sin owner de persona)
 const SPECIAL_PLAZAS: Record<string, SlotExtra> = {
   'P-1-T19':   {},                        // Furgo APTICA — sin owner
-  'P-2-M-R-47': { isService: true },      // Carga y descarga
+  'P-2-M-R-60': { isService: true },      // Carga y descarga
   'P-2-R-I-21': { isMoto: true, isShared: true },
 };
 

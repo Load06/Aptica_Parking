@@ -74,13 +74,18 @@ router.post('/users/:id/approve', async (req: AuthRequest, res: Response) => {
 
 // POST /admin/users/:id/reset-password
 router.post('/users/:id/reset-password', async (req: AuthRequest, res: Response) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.id } });
-  const token = crypto.randomBytes(32).toString('hex');
-  const exp   = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await prisma.user.update({ where: { id: user.id }, data: { resetToken: token, resetTokenExp: exp } });
-  await sendPasswordResetEmail(user.email, user.name, token);
-  await prisma.auditLog.create({ data: { userId: req.userId, action: 'password_reset_sent', detail: user.email } });
-  res.json({ message: 'Email de reset enviado' });
+  try {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.id } });
+    const token = crypto.randomBytes(32).toString('hex');
+    const exp   = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await prisma.user.update({ where: { id: user.id }, data: { resetToken: token, resetTokenExp: exp } });
+    await sendPasswordResetEmail(user.email, user.name, token);
+    await prisma.auditLog.create({ data: { userId: req.userId, action: 'password_reset_sent', detail: user.email } });
+    res.json({ message: 'Email de reset enviado' });
+  } catch (err: any) {
+    console.error('[reset-password] error:', err);
+    res.status(500).json({ error: `No se pudo enviar el email: ${err.message ?? 'error desconocido'}` });
+  }
 });
 
 // DELETE /admin/users/:id

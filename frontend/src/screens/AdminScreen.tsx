@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import type { User, AdminRules, AuditLog } from '../types';
+import type { User, AdminRules, AuditLog, Plaza } from '../types';
 import { Avatar, Badge, BottomSheet, Button, SegmentedControl, Toggle } from '../components/ui';
 
-type Tab = 'users' | 'rules' | 'history';
+type Tab  = 'users' | 'rules' | 'history';
+type Role = 'fixed' | 'floating' | 'admin' | 'guest';
 
 const ROLE_LABELS: Record<string, string> = { fixed: 'Plaza fija', floating: 'Sin plaza', admin: 'Admin', guest: 'Invitado' };
+const BAY_LABELS:  Record<string, string> = { left: 'Nave izq.', mid: 'Central', right: 'Nave der.', top: 'Fila sup.' };
 const STATUS_LABELS: Record<string, { label: string; color: 'ok' | 'warn' | 'gray' | 'red' }> = {
   active:   { label: 'Activo',    color: 'ok' },
   pending:  { label: 'Pendiente', color: 'warn' },
@@ -25,12 +27,33 @@ export function AdminScreen() {
   const [selected, setSelected] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
+  // Edit role / plaza
+  const [editRole, setEditRole] = useState<Role>('floating');
+  const [editPlazaId, setEditPlazaId] = useState<string | null>(null);
+  const [allPlazas, setAllPlazas] = useState<Plaza[]>([]);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (tab === 'users')   api.get<User[]>('/admin/users').then(r => setUsers(r.data));
     if (tab === 'history') api.get<AuditLog[]>('/admin/audit-log').then(r => setLogs(r.data));
     if (tab === 'rules')   api.get<AdminRules>('/admin/rules').then(r => setRules(r.data));
   }, [tab]);
+
+  useEffect(() => {
+    if (selected) {
+      setEditRole(selected.role as Role);
+      setEditPlazaId(selected.assignedPlaza?.id ?? null);
+      setFeedback('');
+    }
+  }, [selected]);
+
+  useEffect(() => {
+    if (editRole === 'fixed' && allPlazas.length === 0) {
+      api.get<Plaza[]>('/plazas').then(r =>
+        setAllPlazas(r.data.filter(p => !p.isRamp && !p.isService))
+      );
+    }
+  }, [editRole, allPlazas.length]);
 
   const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -58,6 +81,23 @@ export function AdminScreen() {
     setFeedback('Usuario desactivado'); setSelected(null);
     api.get<User[]>('/admin/users').then(r => setUsers(r.data));
     setLoading(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selected) return;
+    setSavingEdit(true);
+    try {
+      await api.put(`/admin/users/${selected.id}`, {
+        role: editRole,
+        assignedPlazaId: editRole === 'fixed' ? editPlazaId : null,
+      });
+      setFeedback('Cambios guardados');
+      api.get<User[]>('/admin/users').then(r => setUsers(r.data));
+      setTimeout(() => setSelected(null), 800);
+    } catch {
+      setFeedback('Error al guardar');
+    }
+    setSavingEdit(false);
   };
 
   const handleSaveRules = async (patch: Partial<AdminRules>) => {
@@ -238,6 +278,43 @@ export function AdminScreen() {
             </div>
 
             {selected.plate && <p className="text-[13px] text-ink2 font-medium">Matrícula: <span className="font-bold">{selected.plate}</span></p>}
+
+            {/* ─── Editar rol y plaza ─── */}
+            <div className="border border-gray-line rounded-xl p-4 flex flex-col gap-3">
+              <p className="text-[13px] font-bold text-ink">Rol</p>
+              <SegmentedControl
+                options={[
+                  { value: 'fixed'    as Role, label: 'Fija' },
+                  { value: 'floating' as Role, label: 'Libre' },
+                  { value: 'admin'    as Role, label: 'Admin' },
+                  { value: 'guest'    as Role, label: 'Invitado' },
+                ]}
+                value={editRole}
+                onChange={setEditRole}
+              />
+
+              {editRole === 'fixed' && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[13px] font-bold text-ink">Plaza asignada</p>
+                  <select
+                    value={editPlazaId ?? ''}
+                    onChange={e => setEditPlazaId(e.target.value || null)}
+                    className="w-full h-11 px-3 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
+                  >
+                    <option value="">Sin plaza asignada</option>
+                    {allPlazas.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.floor} · {p.num} — {BAY_LABELS[p.bay] ?? p.bay}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <Button variant="primary" fullWidth onClick={handleSaveEdit} disabled={savingEdit}>
+                {savingEdit ? '…' : 'Guardar cambios'}
+              </Button>
+            </div>
 
             {feedback && <p className="text-[13px] text-ok font-semibold bg-ok-soft px-3 py-2 rounded-md">{feedback}</p>}
 

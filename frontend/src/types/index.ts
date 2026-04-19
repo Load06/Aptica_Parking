@@ -33,8 +33,7 @@ export interface Plaza {
   isService: boolean;
   isMoto: boolean;
   isShared: boolean;
-  owner?: { id: string; name: string; avatarColor: string } | null;
-  coOwners?: { id: string; name: string; avatarColor: string }[];
+  assignedUsers: { id: string; name: string; avatarColor: string }[];
   liberations?: Liberation[];
 }
 

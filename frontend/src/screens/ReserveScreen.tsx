@@ -23,7 +23,7 @@ export function ReserveScreen() {
 
   useEffect(() => {
     api.get('/reservations/my/weekly').then(r => setQuota(r.data));
-    api.get('/admin/rules').then(r => setRules(r.data));
+    api.get('/rules').then(r => setRules(r.data));
   }, []);
 
   useEffect(() => {
@@ -121,7 +121,7 @@ export function ReserveScreen() {
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold text-ink truncate">{lib.plaza?.owner?.name ?? 'Titular'}</p>
+                <p className="text-[14px] font-semibold text-ink truncate">{lib.plaza?.assignedUsers?.[0]?.name ?? 'Titular'}</p>
                 <p className="text-[12px] text-gray-mid font-medium">{HALF_DAY_LABELS[lib.halfDay]}</p>
                 {occupied && !isMe && (
                   <Badge color="gray" className="mt-0.5">Ocupada</Badge>

@@ -7,7 +7,16 @@
       "Bash(npm create *)",
       "Bash(npx tsc *)",
       "Bash(npm run *)",
-      "Bash(node -e \"const wp=require\\('web-push'\\); const keys=wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:', keys.publicKey\\); console.log\\('PRIVATE:', keys.privateKey\\);\")"
+      "Bash(node -e \"const wp=require\\('web-push'\\); const keys=wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:', keys.publicKey\\); console.log\\('PRIVATE:', keys.privateKey\\);\")",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(docker --version)",
+      "Bash(psql --version)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s http://localhost:3001/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)"
     ]
   }
 }
