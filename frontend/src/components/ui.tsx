@@ -232,7 +232,7 @@ export function SegmentedControl<T extends string>({
 }: {
   options: { value: T; label: string }[];
   value: T;
-  onChange: (v: T) => void;
+  onChange: (v: any) => void;
 }) {
   return (
     <div className="flex bg-gray-bg rounded-md p-1 gap-1">
