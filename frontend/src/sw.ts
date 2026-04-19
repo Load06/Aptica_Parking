@@ -29,7 +29,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data?.url as string) ?? '/';
+  const path = (event.notification.data?.url as string) ?? '/';
+  const fullUrl = new URL(path, self.location.origin).href;
   event.waitUntil(
     self.clients
       .matchAll({ type: 'window', includeUncontrolled: true })
@@ -37,10 +38,9 @@ self.addEventListener('notificationclick', (event) => {
         const existing = clients.find((c) => c.url.startsWith(self.location.origin));
         if (existing) {
           existing.focus();
-          (existing as WindowClient).navigate(url);
-        } else {
-          self.clients.openWindow(url);
+          return (existing as WindowClient).navigate(fullUrl);
         }
+        return self.clients.openWindow(fullUrl);
       }),
   );
 });
