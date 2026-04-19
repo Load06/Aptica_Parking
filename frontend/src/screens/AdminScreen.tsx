@@ -44,6 +44,7 @@ export function AdminScreen() {
       setEditRole(selected.role as Role);
       setEditPlazaId(selected.assignedPlaza?.id ?? null);
       setFeedback('');
+      setResetUrl('');
     }
   }, [selected]);
 
@@ -68,10 +69,12 @@ export function AdminScreen() {
     setLoading(false);
   };
 
+  const [resetUrl, setResetUrl] = useState('');
+
   const handleResetPwd = async (u: User) => {
     setLoading(true);
-    await api.post(`/admin/users/${u.id}/reset-password`);
-    setFeedback('Email de reset enviado'); setSelected(null);
+    const { data } = await api.post<{ url: string }>(`/admin/users/${u.id}/reset-password`);
+    setResetUrl(data.url);
     setLoading(false);
   };
 
@@ -324,9 +327,24 @@ export function AdminScreen() {
                   ✅ Activar cuenta
                 </Button>
               )}
-              <Button variant="secondary" fullWidth onClick={() => handleResetPwd(selected)} disabled={loading}>
-                📧 Enviar reset de contraseña
-              </Button>
+              {resetUrl ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-[12px] text-gray-mid font-medium">Comparte este enlace con el usuario (caduca en 24h):</p>
+                  <div className="bg-gray-bg rounded-xl px-3 py-2 flex items-center gap-2">
+                    <p className="text-[11px] text-ink2 font-medium flex-1 break-all">{resetUrl}</p>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(resetUrl); setFeedback('Enlace copiado'); }}
+                      className="shrink-0 text-[11px] font-bold text-purple bg-purple-soft px-2 py-1 rounded-md"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="secondary" fullWidth onClick={() => handleResetPwd(selected)} disabled={loading}>
+                  🔑 Generar enlace de reset
+                </Button>
+              )}
               <Button variant="danger" fullWidth onClick={() => handleDisable(selected)} disabled={loading}>
                 Desactivar usuario
               </Button>

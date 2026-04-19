@@ -4,8 +4,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendPasswordResetEmail(to: string, name: string, token: string) {
   const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-  await resend.emails.send({
-    from: 'Aptica Parking <no-reply@aptica.es>',
+  const { data, error } = await resend.emails.send({
+    from: 'Aptica Parking <onboarding@resend.dev>',
     to,
     subject: 'Establece tu contraseña — Aptica Parking',
     html: `
@@ -15,4 +15,9 @@ export async function sendPasswordResetEmail(to: string, name: string, token: st
       <p style="color:#8E8E93;font-size:12px;">Si no esperabas este correo, ignóralo.</p>
     `,
   });
+  if (error) {
+    console.error('[Resend error]', error);
+    throw new Error(error.message);
+  }
+  console.log('[Resend] email enviado, id:', data?.id);
 }

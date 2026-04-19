@@ -1,20 +1,17 @@
 import { useState } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Calendar, Map, User, Key } from 'lucide-react';
+import { ParkingSquare, Map, User, Key } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { HomeScreen } from '../screens/HomeScreen';
-import { ReserveScreen } from '../screens/ReserveScreen';
+import { ParkingScreen } from '../screens/ParkingScreen';
 import { MapScreen } from '../screens/MapScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { AdminScreen } from '../screens/AdminScreen';
 import { LiberateSheet } from './LiberateSheet';
 
 const tabs = [
-  { path: '/',        label: 'Hoy',      Icon: Home },
-  { path: '/reservar', label: 'Reservar', Icon: Calendar },
-  { path: null,       label: '',          Icon: Key },   // FAB
-  { path: '/mapa',    label: 'Mapa',      Icon: Map },
-  { path: '/perfil',  label: 'Perfil',    Icon: User },
+  { path: '/',      label: 'Parking', Icon: ParkingSquare },
+  { path: '/mapa',  label: 'Mapa',    Icon: Map },
+  { path: '/perfil',label: 'Perfil',  Icon: User },
 ];
 
 export function AppShell() {
@@ -31,7 +28,7 @@ export function AppShell() {
           <div className="px-3 mb-6">
             <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-gray-mid">Aptica Parking</p>
           </div>
-          {tabs.filter(t => t.path).map((t) => {
+          {tabs.filter(t => t.path !== null).map((t) => {
             const active = t.path === '/' ? pathname === '/' : pathname.startsWith(t.path!);
             return (
               <button
@@ -60,33 +57,18 @@ export function AppShell() {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto pb-24 md:pb-6">
           <Routes>
-            <Route path="/"          element={<HomeScreen onLiberate={() => setLiberateOpen(true)} />} />
-            <Route path="/reservar"  element={<ReserveScreen />} />
-            <Route path="/mapa"      element={<MapScreen />} />
-            <Route path="/perfil"    element={<ProfileScreen />} />
-            <Route path="/admin/*"   element={<AdminScreen />} />
+            <Route path="/"        element={<ParkingScreen onLiberate={() => setLiberateOpen(true)} />} />
+            <Route path="/mapa"    element={<MapScreen />} />
+            <Route path="/perfil"  element={<ProfileScreen />} />
+            <Route path="/admin/*" element={<AdminScreen />} />
           </Routes>
         </main>
       </div>
 
       {/* Mobile tab bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-3.5 pb-safe pb-2">
-        <div className="bg-white rounded-[28px] border border-gray-line shadow-tabbar grid grid-cols-5 items-center h-[68px] relative">
+        <div className="bg-white rounded-[28px] border border-gray-line shadow-tabbar grid grid-cols-4 items-center h-[68px]">
           {tabs.map((t) => {
-            if (!t.path) {
-              return (
-                <div key="fab" className="flex justify-center">
-                  <button
-                    onClick={() => setLiberateOpen(true)}
-                    className="w-[54px] h-[54px] rounded-full flex items-center justify-center text-white shadow-fab -translate-y-3.5"
-                    style={{ background: 'linear-gradient(135deg, #6A1873, #58457A)' }}
-                    aria-label="Liberar plaza"
-                  >
-                    <Key size={22} />
-                  </button>
-                </div>
-              );
-            }
             const active = t.path === '/' ? pathname === '/' : pathname.startsWith(t.path);
             return (
               <button
@@ -104,6 +86,20 @@ export function AppShell() {
               </button>
             );
           })}
+          {/* Liberar — botón destacado a la derecha */}
+          <button
+            onClick={() => setLiberateOpen(true)}
+            className="flex flex-col items-center gap-[3px] py-2"
+            aria-label="Liberar plaza"
+          >
+            <div className="w-[38px] h-[28px] rounded-full flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #6A1873, #58457A)' }}>
+              <Key size={16} color="#fff" />
+            </div>
+            <span className="text-[10px] font-bold" style={{ color: '#6A1873', letterSpacing: 0.2 }}>
+              Liberar
+            </span>
+          </button>
         </div>
       </div>
 

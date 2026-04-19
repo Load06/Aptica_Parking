@@ -21,13 +21,12 @@ router.get('/', verifyJWT, async (req: AuthRequest, res: Response) => {
   res.json(reservations);
 });
 
-// GET /reservations/my/weekly — cupo semanal del usuario autenticado
+// GET /reservations/my/weekly?date=YYYY-MM-DD — cupo de la semana que contiene date
 router.get('/my/weekly', verifyJWT, async (req: AuthRequest, res: Response) => {
-  const now = new Date();
-  // Semana actual: lunes → domingo
-  const day = now.getDay() === 0 ? 7 : now.getDay(); // 1=lun, 7=dom
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (day - 1));
+  const ref = req.query.date ? new Date(req.query.date as string) : new Date();
+  const day = ref.getDay() === 0 ? 7 : ref.getDay(); // 1=lun … 7=dom
+  const monday = new Date(ref);
+  monday.setDate(ref.getDate() - (day - 1));
   monday.setHours(0, 0, 0, 0);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
@@ -53,7 +52,11 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
   });
 
   if (lib.reservation) {
-    res.status(409).json({ error: 'Plaza ya reservada para ese día' }); return;
+    if (lib.reservation.status === 'confirmed') {
+      res.status(409).json({ error: 'Plaza ya reservada para ese día' }); return;
+    }
+    // Borrar reserva cancelada/displaced para poder crear una nueva
+    await prisma.reservation.delete({ where: { id: lib.reservation.id } });
   }
 
   // Regla: antelación máxima
@@ -63,13 +66,11 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     res.status(400).json({ error: `Solo puedes reservar con ${rules.advanceBookingHours}h de antelación` }); return;
   }
 
-  // Regla: cupo semanal
-  const now = new Date();
-  const day = now.getDay() === 0 ? 7 : now.getDay();
-  const monday = new Date(now); monday.setDate(now.getDate() - (day - 1)); monday.setHours(0,0,0,0);
-  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23,59,59,999);
+  // Regla: cupo semanal (próximos 7 días desde hoy)
+  const from = new Date(); from.setHours(0,0,0,0);
+  const to = new Date(from); to.setDate(from.getDate() + 6); to.setHours(23,59,59,999);
   const weekCount = await prisma.reservation.count({
-    where: { userId: req.userId, date: { gte: monday, lte: sunday }, status: 'confirmed' },
+    where: { userId: req.userId, date: { gte: from, lte: to }, status: 'confirmed' },
   });
   if (weekCount >= rules.weeklyQuotaPerUser) {
     res.status(400).json({ error: 'Has alcanzado tu cupo semanal' }); return;
@@ -154,7 +155,7 @@ router.delete('/:id', verifyJWT, async (req: AuthRequest, res: Response) => {
   if (res_.userId !== req.userId) {
     res.status(403).json({ error: 'No puedes cancelar esta reserva' }); return;
   }
-  await prisma.reservation.update({ where: { id: req.params.id }, data: { status: 'cancelled' } });
+  await prisma.reservation.delete({ where: { id: req.params.id } });
   res.json({ message: 'Reserva cancelada' });
 });
 

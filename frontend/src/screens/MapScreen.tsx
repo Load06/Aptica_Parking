@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import type { Plaza, Liberation } from '../types';
@@ -223,10 +224,13 @@ function ParkingFloor({
 // ─── MapScreen ────────────────────────────────────────────────────────────
 export function MapScreen() {
   const { user } = useAuth();
-  const [floor, setFloor] = useState<Floor>('P-1');
+  const location = useLocation();
+  const navState = location.state as { highlightPlazaId?: string; floor?: string } | null;
+  const [floor, setFloor] = useState<Floor>((navState?.floor as Floor) ?? 'P-1');
   const [plazas, setPlazas] = useState<Plaza[]>([]);
   const [libs, setLibs] = useState<Liberation[]>([]);
   const [selected, setSelected] = useState<Plaza | null>(null);
+  const highlightPlazaId = navState?.highlightPlazaId ?? user?.assignedPlaza?.id;
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -279,7 +283,7 @@ export function MapScreen() {
           plazas={plazas}
           liberatedIds={liberatedIds}
           reservedIds={reservedIds}
-          myPlazaId={user?.assignedPlaza?.id}
+          myPlazaId={highlightPlazaId}
           onSelect={setSelected}
           floor={floor}
         />
@@ -292,7 +296,7 @@ export function MapScreen() {
           { color: 'bg-purple-soft border border-purple', label: 'Liberada hoy' },
           { color: 'bg-[#E8E6EA]',                        label: 'Sin titular' },
           { color: 'bg-[#58457A]',                        label: 'Servicio' },
-          { color: 'border-2 border-ok bg-white',         label: 'Tu plaza' },
+          { color: 'border-2 border-ok bg-white',         label: 'Tu plaza / reserva' },
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`w-3.5 h-3.5 rounded-[3px] ${l.color}`} />

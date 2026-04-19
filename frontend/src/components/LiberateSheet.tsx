@@ -93,28 +93,32 @@ export function LiberateSheet({ open, onClose }: Props) {
 
         {/* Calendar */}
         {mode === 'single' && (
-          <DayPicker
-            mode="multiple"
-            selected={selectedDays}
-            onSelect={days => setSelectedDays(days ?? [])}
-            disabled={[{ before: today }, isWeekend]}
-            locale={es}
-            modifiers={modifiers}
-            modifiersClassNames={modifiersClassNames}
-            className="!m-0 w-full"
-          />
+          <div className="flex justify-center">
+            <DayPicker
+              mode="multiple"
+              selected={selectedDays}
+              onSelect={days => setSelectedDays(days ?? [])}
+              disabled={[{ before: today }, isWeekend]}
+              locale={es}
+              modifiers={modifiers}
+              modifiersClassNames={modifiersClassNames}
+              className="!m-0"
+            />
+          </div>
         )}
         {mode === 'range' && (
-          <DayPicker
-            mode="range"
-            selected={range}
-            onSelect={r => setRange(r ?? { from: undefined })}
-            disabled={{ before: today }}
-            locale={es}
-            modifiers={modifiers}
-            modifiersClassNames={modifiersClassNames}
-            className="!m-0 w-full"
-          />
+          <div className="flex justify-center">
+            <DayPicker
+              mode="range"
+              selected={range}
+              onSelect={r => setRange(r ?? { from: undefined })}
+              disabled={{ before: today }}
+              locale={es}
+              modifiers={modifiers}
+              modifiersClassNames={modifiersClassNames}
+              className="!m-0"
+            />
+          </div>
         )}
         {mode === 'recurring' && (
           <div className="flex flex-col gap-4">

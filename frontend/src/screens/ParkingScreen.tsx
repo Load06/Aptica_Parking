@@ -42,9 +42,6 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
 
   useEffect(() => {
     api.get('/rules').then(r => setRules(r.data));
-    if (user?.role !== 'admin') {
-      api.get('/reservations/my/weekly').then(r => setQuota(r.data));
-    }
   }, [user]);
 
   useEffect(() => {
@@ -52,9 +49,12 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
     api.get<Liberation[]>(`/plazas/availability?date=${d}`).then(r => {
       setLibs(r.data);
       const mine = r.data.find(l => l.reservation?.userId === user?.id && l.reservation?.status === 'confirmed');
-      setMyReservation(mine?.reservation ?? null);
+      setMyReservation(mine && mine.reservation ? { ...mine.reservation, plaza: mine.plaza } : null);
       setMyLiberation(r.data.find(l => l.userId === user?.id) ?? null);
     });
+    if (user?.role !== 'admin') {
+      api.get(`/reservations/my/weekly?date=${ymd(selectedDate)}`).then(r => setQuota(r.data));
+    }
     if (user?.role === 'admin') {
       Promise.all([
         api.get(`/plazas/availability?date=${d}`),
@@ -74,14 +74,18 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
     setMyReservation(mine?.reservation ?? null);
     setMyLiberation(r.data.find(l => l.userId === user?.id) ?? null);
     if (user?.role !== 'admin') {
-      api.get('/reservations/my/weekly').then(r => setQuota(r.data));
+      const qr = await api.get(`/reservations/my/weekly?date=${d}`);
+      setQuota(qr.data);
     }
   };
 
   const handleReserve = async (libId: string) => {
     setActionLoading(libId); setError('');
     try {
-      await api.post('/reservations', { liberationId: libId });
+      const { data: created } = await api.post<Reservation>('/reservations', { liberationId: libId });
+      // Actualización inmediata: el backend ya devuelve plaza incluida
+      setMyReservation(created);
+      setQuota(prev => ({ ...prev, used: prev.used + 1 }));
       await refreshDate();
     } catch (err: any) {
       setError(err.response?.data?.error ?? 'Error al reservar');
@@ -91,8 +95,12 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
   const handleCancelReservation = async () => {
     if (!myReservation) return;
     setActionLoading('cancel');
-    try { await api.delete(`/reservations/${myReservation.id}`); await refreshDate(); }
-    finally { setActionLoading(null); }
+    try {
+      await api.delete(`/reservations/${myReservation.id}`);
+      setMyReservation(null);
+      setQuota(prev => ({ ...prev, used: Math.max(0, prev.used - 1) }));
+      await refreshDate();
+    } finally { setActionLoading(null); }
   };
 
   const handleRecoverPlaza = async () => {
@@ -164,7 +172,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
                 </button>
               )}
               <button
-                onClick={() => navigate('/mapa')}
+                onClick={() => navigate('/mapa', { state: { highlightPlazaId: plaza?.id, floor: plaza?.floor } })}
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{ background: 'rgba(255,255,255,0.15)' }}
               >
@@ -198,7 +206,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="secondary" size="md" fullWidth onClick={() => navigate('/mapa')}>
+            <Button variant="secondary" size="md" fullWidth onClick={() => navigate('/mapa', { state: { highlightPlazaId: myReservation.plazaId, floor: myReservation.plaza?.floor } })}>
               <Map size={16} /> Ver en el mapa
             </Button>
             <Button variant="danger" size="md" onClick={handleCancelReservation} disabled={actionLoading === 'cancel'}>
