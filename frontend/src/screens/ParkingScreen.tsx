@@ -34,7 +34,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
 
   const today = new Date();
   const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
-  const firstName = user?.name.split(' ')[0] ?? '';
+  const firstName = user?.name?.split(' ')[0] ?? '';
   const plaza = user?.assignedPlaza;
   const myPlazaId = plaza?.id;
   const advance = rules.advanceBookingHours / 24;

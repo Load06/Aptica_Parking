@@ -71,7 +71,7 @@ export function HomeScreen({ onLiberate }: HomeProps) {
     finally { setActionLoading(false); }
   };
 
-  const firstName = user?.name.split(' ')[0] ?? '';
+  const firstName = user?.name?.split(' ')[0] ?? '';
   const plaza = user?.assignedPlaza;
 
   return (
