@@ -85,9 +85,22 @@ router.post('/users/:id/reset-password', async (req: AuthRequest, res: Response)
 
 // DELETE /admin/users/:id
 router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
-  await prisma.user.update({ where: { id: req.params.id }, data: { status: 'disabled' } });
-  await prisma.auditLog.create({ data: { userId: req.userId, action: 'user_disabled', detail: req.params.id } });
-  res.json({ message: 'Usuario desactivado' });
+  const targetId = req.params.id;
+  // 1. Delete reservations made by this user
+  await prisma.reservation.deleteMany({ where: { userId: targetId } });
+  // 2. Delete reservations on liberations owned by this user (other users reserved them)
+  const userLiberations = await prisma.liberation.findMany({ where: { userId: targetId }, select: { id: true } });
+  if (userLiberations.length > 0) {
+    await prisma.reservation.deleteMany({ where: { liberationId: { in: userLiberations.map(l => l.id) } } });
+  }
+  // 3. Delete liberations
+  await prisma.liberation.deleteMany({ where: { userId: targetId } });
+  // 4. Nullify audit log entries (userId is optional)
+  await prisma.auditLog.updateMany({ where: { userId: targetId }, data: { userId: null } });
+  // 5. Delete user (PushSubscription + WaitingQueue cascade automatically)
+  const user = await prisma.user.delete({ where: { id: targetId } });
+  await prisma.auditLog.create({ data: { userId: req.userId, action: 'user_deleted', detail: user.email } });
+  res.json({ message: 'Usuario eliminado' });
 });
 
 // GET /admin/rules

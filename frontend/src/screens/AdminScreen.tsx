@@ -33,6 +33,17 @@ export function AdminScreen() {
   const [editPriority, setEditPriority] = useState(false);
   const [allPlazas, setAllPlazas] = useState<Plaza[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
+  // New user sheet
+  const [newUserOpen, setNewUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<Role>('floating');
+  const [newUserPlate, setNewUserPlate] = useState('');
+  const [newUserPlazaId, setNewUserPlazaId] = useState('');
+  const [newUserError, setNewUserError] = useState('');
+  const [newUserSaving, setNewUserSaving] = useState(false);
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (tab === 'users')   api.get<User[]>('/admin/users').then(r => setUsers(r.data));
@@ -47,16 +58,17 @@ export function AdminScreen() {
       setEditPriority(selected.priority ?? false);
       setFeedback('');
       setResetUrl('');
+      setDeleteConfirm(false);
     }
   }, [selected]);
 
   useEffect(() => {
-    if (editRole === 'fixed' && allPlazas.length === 0) {
+    if ((editRole === 'fixed' || newUserRole === 'fixed') && allPlazas.length === 0) {
       api.get<Plaza[]>('/plazas').then(r =>
         setAllPlazas(r.data.filter(p => !p.isRamp && !p.isService))
       );
     }
-  }, [editRole, allPlazas.length]);
+  }, [editRole, newUserRole, allPlazas.length]);
 
   const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -80,12 +92,33 @@ export function AdminScreen() {
     setLoading(false);
   };
 
-  const handleDisable = async (u: User) => {
+  const handleDelete = async (u: User) => {
     setLoading(true);
     await api.delete(`/admin/users/${u.id}`);
-    setFeedback('Usuario desactivado'); setSelected(null);
+    setDeleteConfirm(false); setSelected(null);
     api.get<User[]>('/admin/users').then(r => setUsers(r.data));
     setLoading(false);
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserName.trim() || !newUserEmail.trim()) return;
+    setNewUserSaving(true); setNewUserError('');
+    try {
+      await api.post('/admin/users', {
+        name: newUserName.trim(),
+        email: newUserEmail.trim(),
+        role: newUserRole,
+        ...(newUserPlate.trim() ? { plate: newUserPlate.trim() } : {}),
+        ...(newUserRole === 'fixed' && newUserPlazaId ? { assignedPlazaId: newUserPlazaId } : {}),
+      });
+      setNewUserOpen(false);
+      setNewUserName(''); setNewUserEmail(''); setNewUserRole('floating');
+      setNewUserPlate(''); setNewUserPlazaId('');
+      api.get<User[]>('/admin/users').then(r => setUsers(r.data));
+    } catch (err: any) {
+      setNewUserError(err.response?.data?.error ?? 'Error al crear usuario');
+    }
+    setNewUserSaving(false);
   };
 
   const handleSaveEdit = async () => {
@@ -124,6 +157,7 @@ export function AdminScreen() {
     user_approved:      '✅ Usuario activado',
     user_created:       '➕ Usuario creado',
     user_disabled:      '🚫 Usuario desactivado',
+    user_deleted:       '🗑️ Usuario eliminado',
     password_reset_sent:'📧 Reset de contraseña enviado',
     plaza_liberated:    '🔓 Plaza liberada',
     reservation_urgent: '⚡ Reserva urgente',
@@ -163,6 +197,13 @@ export function AdminScreen() {
                 className="w-full h-11 pl-9 pr-4 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
               />
             </div>
+            <button
+              onClick={() => { setNewUserOpen(true); setNewUserError(''); }}
+              className="h-11 px-4 rounded-xl text-[13px] font-semibold text-white shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6A1873, #58457A)' }}
+            >
+              + Nuevo
+            </button>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -275,6 +316,80 @@ export function AdminScreen() {
         </div>
       )}
 
+      {/* New user sheet */}
+      <BottomSheet open={newUserOpen} onClose={() => setNewUserOpen(false)} title="Nuevo usuario">
+        <div className="pt-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink2">Nombre</label>
+            <input
+              value={newUserName}
+              onChange={e => setNewUserName(e.target.value)}
+              placeholder="Nombre completo"
+              className="h-11 px-3 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink2">Email</label>
+            <input
+              value={newUserEmail}
+              onChange={e => setNewUserEmail(e.target.value)}
+              placeholder="correo@empresa.com"
+              type="email"
+              className="h-11 px-3 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink2">Rol</label>
+            <SegmentedControl
+              options={[
+                { value: 'fixed'    as Role, label: 'Fija' },
+                { value: 'floating' as Role, label: 'Libre' },
+                { value: 'admin'    as Role, label: 'Admin' },
+                { value: 'guest'    as Role, label: 'Invitado' },
+              ]}
+              value={newUserRole}
+              onChange={setNewUserRole}
+            />
+          </div>
+          {newUserRole === 'fixed' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[13px] font-semibold text-ink2">Plaza asignada</label>
+              <select
+                value={newUserPlazaId}
+                onChange={e => setNewUserPlazaId(e.target.value)}
+                className="h-11 px-3 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
+              >
+                <option value="">Sin plaza asignada</option>
+                {allPlazas.map(p => (
+                  <option key={p.id} value={p.id}>{p.floor} · {p.num} — {BAY_LABELS[p.bay] ?? p.bay}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-semibold text-ink2">Matrícula (opcional)</label>
+            <input
+              value={newUserPlate}
+              onChange={e => setNewUserPlate(e.target.value)}
+              placeholder="0000 ABC"
+              className="h-11 px-3 rounded-xl border border-gray-line text-[14px] font-medium bg-white outline-none focus:border-purple"
+            />
+          </div>
+          {newUserError && <p className="text-[13px] text-red font-semibold bg-red-soft px-3 py-2 rounded-md">{newUserError}</p>}
+          <div className="flex gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setNewUserOpen(false)}>Cancelar</Button>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={handleCreateUser}
+              disabled={newUserSaving || !newUserName.trim() || !newUserEmail.trim()}
+            >
+              {newUserSaving ? '…' : 'Crear usuario'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+
       {/* User detail sheet */}
       <BottomSheet open={!!selected} onClose={() => setSelected(null)} title="Detalle usuario">
         {selected && (
@@ -366,9 +481,21 @@ export function AdminScreen() {
                   🔑 Generar enlace de reset
                 </Button>
               )}
-              <Button variant="danger" fullWidth onClick={() => handleDisable(selected)} disabled={loading}>
-                Desactivar usuario
-              </Button>
+              {!deleteConfirm ? (
+                <Button variant="danger" fullWidth onClick={() => setDeleteConfirm(true)} disabled={loading}>
+                  Eliminar usuario
+                </Button>
+              ) : (
+                <div className="border border-red/30 rounded-xl p-3 flex flex-col gap-2 bg-red-soft">
+                  <p className="text-[13px] font-semibold text-red">¿Eliminar permanentemente a {selected.name}? Esta acción no se puede deshacer.</p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="flex-1" onClick={() => setDeleteConfirm(false)}>Cancelar</Button>
+                    <Button variant="danger" className="flex-1" onClick={() => handleDelete(selected)} disabled={loading}>
+                      {loading ? '…' : 'Sí, eliminar'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
