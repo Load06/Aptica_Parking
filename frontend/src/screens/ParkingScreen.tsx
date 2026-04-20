@@ -9,14 +9,15 @@ import { WeekStrip } from '../components/WeekStrip';
 import { ymd, HALF_DAY_LABELS } from '../lib/utils';
 
 interface ParkingScreenProps {
-  onLiberate: () => void;
+  onLiberate: (date?: Date) => void;
+  onSelectedDateChange?: (date: Date) => void;
 }
 
 const BAY_LABELS: Record<string, string> = {
   top: 'Nave superior', left: 'Nave izquierda', mid: 'Nave central', right: 'Nave derecha',
 };
 
-export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
+export function ParkingScreen({ onLiberate, onSelectedDateChange }: ParkingScreenProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -285,7 +286,7 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
 
       {/* ── Selector de día ── */}
       <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-gray-mid mb-2">Selecciona día</p>
-      <WeekStrip selected={selectedDate} onPick={setSelectedDate} disabledAfterDays={advance} />
+      <WeekStrip selected={selectedDate} onPick={d => { setSelectedDate(d); onSelectedDateChange?.(d); }} disabledAfterDays={advance} />
 
       {/* ── Lista de plazas ── */}
       <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-gray-mid mt-5 mb-2">
@@ -345,7 +346,11 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
                 <div className="flex gap-1.5 mt-0.5 flex-wrap">
                   {isMyRes     && <Badge color="ok">Tu reserva</Badge>}
                   {isMyPlaza && !isMyLib && <Badge color="purple">Tu plaza</Badge>}
-                  {occupied && !isMyRes && <Badge color="gray">Ocupada</Badge>}
+                  {occupied && !isMyRes && (
+                    <Badge color="gray">
+                      {lib.reservation?.user?.name ?? 'Ocupada'}
+                    </Badge>
+                  )}
                 </div>
               </div>
 

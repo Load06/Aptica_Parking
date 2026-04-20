@@ -128,7 +128,7 @@ export function ReserveScreen() {
                 <p className="text-[14px] font-semibold text-ink truncate">{lib.plaza?.assignedUsers?.[0]?.name ?? 'Titular'}</p>
                 <p className="text-[12px] text-gray-mid font-medium">{HALF_DAY_LABELS[lib.halfDay]}</p>
                 {occupied && !isMe && (
-                  <Badge color="gray" className="mt-0.5">Ocupada</Badge>
+                  <Badge color="gray" className="mt-0.5">{lib.reservation?.user?.name ?? 'Ocupada'}</Badge>
                 )}
                 {isMe && (
                   <Badge color="ok" className="mt-0.5">Tu reserva</Badge>

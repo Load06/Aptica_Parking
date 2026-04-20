@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DayPicker, type DateRange } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import { es } from 'date-fns/locale';
@@ -12,13 +12,23 @@ type HalfDay = 'full' | 'am' | 'pm';
 type Until = '1m' | '3m' | '6m' | 'indefinite';
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-interface Props { open: boolean; onClose: () => void; }
+interface Props { open: boolean; onClose: () => void; defaultDate?: Date; }
 
-export function LiberateSheet({ open, onClose }: Props) {
+export function LiberateSheet({ open, onClose, defaultDate }: Props) {
   const { user } = useAuth();
   const [mode, setMode] = useState<Mode>('single');
   const [halfDay, setHalfDay] = useState<HalfDay>('full');
   const [selectedDays, setSelectedDays] = useState<Date[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (defaultDate && !isWeekend(defaultDate) && defaultDate >= new Date(new Date().setHours(0,0,0,0))) {
+      setMode('single');
+      setSelectedDays([defaultDate]);
+    } else {
+      setSelectedDays([]);
+    }
+  }, [open, defaultDate]);
   const [range, setRange] = useState<DateRange>({ from: undefined });
   const [recWeekday, setRecWeekday] = useState(0);
   const [until, setUntil] = useState<Until>('1m');

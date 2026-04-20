@@ -16,8 +16,15 @@ const tabs = [
 
 export function AppShell() {
   const [liberateOpen, setLiberateOpen] = useState(false);
+  const [liberateDefaultDate, setLiberateDefaultDate] = useState<Date | undefined>();
+  const [parkingDate, setParkingDate] = useState<Date | undefined>();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+
+  const openLiberate = (date?: Date) => {
+    setLiberateDefaultDate(date);
+    setLiberateOpen(true);
+  };
 
   return (
     <div className="h-dvh flex flex-col bg-bg">
@@ -45,7 +52,7 @@ export function AppShell() {
             );
           })}
           <button
-            onClick={() => setLiberateOpen(true)}
+            onClick={() => openLiberate(parkingDate)}
             className="mt-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-semibold text-white transition-colors"
             style={{ background: 'linear-gradient(135deg, #6A1873, #58457A)' }}
           >
@@ -57,7 +64,7 @@ export function AppShell() {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto pb-24 md:pb-6">
           <Routes>
-            <Route path="/"        element={<ParkingScreen onLiberate={() => setLiberateOpen(true)} />} />
+            <Route path="/"        element={<ParkingScreen onLiberate={openLiberate} onSelectedDateChange={setParkingDate} />} />
             <Route path="/mapa"    element={<MapScreen />} />
             <Route path="/perfil"  element={<ProfileScreen />} />
             <Route path="/admin/*" element={<AdminScreen />} />
@@ -88,7 +95,7 @@ export function AppShell() {
           })}
           {/* Liberar — botón destacado a la derecha */}
           <button
-            onClick={() => setLiberateOpen(true)}
+            onClick={() => openLiberate(parkingDate)}
             className="flex flex-col items-center gap-[3px] py-2"
             aria-label="Liberar plaza"
           >
@@ -103,7 +110,7 @@ export function AppShell() {
         </div>
       </div>
 
-      <LiberateSheet open={liberateOpen} onClose={() => setLiberateOpen(false)} />
+      <LiberateSheet open={liberateOpen} onClose={() => setLiberateOpen(false)} defaultDate={liberateDefaultDate} />
     </div>
   );
 }
