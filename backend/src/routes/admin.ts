@@ -86,6 +86,14 @@ router.post('/users/:id/reset-password', async (req: AuthRequest, res: Response)
 // DELETE /admin/users/:id
 router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
   const targetId = req.params.id;
+  if (targetId === req.userId) {
+    return res.status(403).json({ error: 'No puedes eliminarte a ti mismo' });
+  }
+  const adminCount = await prisma.user.count({ where: { role: 'admin' } });
+  const targetUser = await prisma.user.findUniqueOrThrow({ where: { id: targetId }, select: { role: true } });
+  if (targetUser.role === 'admin' && adminCount <= 1) {
+    return res.status(403).json({ error: 'No se puede eliminar el único administrador' });
+  }
   // 1. Delete reservations made by this user
   await prisma.reservation.deleteMany({ where: { userId: targetId } });
   // 2. Delete reservations on liberations owned by this user (other users reserved them)
