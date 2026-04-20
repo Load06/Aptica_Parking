@@ -95,7 +95,6 @@ export function AdminScreen() {
       await api.put(`/admin/users/${selected.id}`, {
         role: editRole,
         assignedPlazaId: editRole === 'fixed' ? editPlazaId : null,
-        priority: editRole === 'floating' ? editPriority : false,
       });
       setFeedback('Cambios guardados');
       api.get<User[]>('/admin/users').then(r => setUsers(r.data));
@@ -104,6 +103,14 @@ export function AdminScreen() {
       setFeedback('Error al guardar');
     }
     setSavingEdit(false);
+  };
+
+  const handleTogglePriority = async (v: boolean) => {
+    if (!selected) return;
+    setEditPriority(v);
+    await api.put(`/admin/users/${selected.id}`, { priority: v });
+    setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, priority: v } : u));
+    setSelected(prev => prev ? { ...prev, priority: v } : prev);
   };
 
   const handleSaveRules = async (patch: Partial<AdminRules>) => {
@@ -318,20 +325,20 @@ export function AdminScreen() {
                 </div>
               )}
 
-              {editRole === 'floating' && (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[13px] font-bold text-ink">⭐ Usuario prioritario</p>
-                    <p className="text-[11px] text-gray-mid font-medium mt-0.5">Recibe plazas liberadas antes que la cola</p>
-                  </div>
-                  <Toggle checked={editPriority} onChange={setEditPriority} />
-                </div>
-              )}
-
               <Button variant="primary" fullWidth onClick={handleSaveEdit} disabled={savingEdit}>
                 {savingEdit ? '…' : 'Guardar cambios'}
               </Button>
             </div>
+
+            {editRole === 'floating' && (
+              <div className="border border-gray-line rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] font-bold text-ink">⭐ Usuario prioritario</p>
+                  <p className="text-[11px] text-gray-mid font-medium mt-0.5">Recibe plazas liberadas antes que la cola</p>
+                </div>
+                <Toggle checked={editPriority} onChange={handleTogglePriority} />
+              </div>
+            )}
 
             {feedback && <p className="text-[13px] text-ok font-semibold bg-ok-soft px-3 py-2 rounded-md">{feedback}</p>}
 
