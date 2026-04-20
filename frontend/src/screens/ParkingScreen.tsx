@@ -193,7 +193,7 @@ export function ParkingScreen({ onLiberate, onSelectedDateChange }: ParkingScree
                 </button>
               ) : (
                 <button
-                  onClick={onLiberate}
+                  onClick={() => onLiberate()}
                   className="flex-1 h-11 rounded-xl flex items-center justify-center gap-1.5 text-[14px] font-bold text-white"
                   style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)' }}
                 >
@@ -407,7 +407,7 @@ export function ParkingScreen({ onLiberate, onSelectedDateChange }: ParkingScree
           <p className="text-[11px] font-bold tracking-[1.2px] uppercase text-gray-mid mt-5 mb-2">Accesos rápidos</p>
           <div className="grid grid-cols-2 gap-2.5">
             {[
-              { t: 'Liberar varios días', s: 'Rango o recurrente', icon: <RotateCw size={22} className="text-purple" />, action: onLiberate },
+              { t: 'Liberar varios días', s: 'Rango o recurrente', icon: <RotateCw size={22} className="text-purple" />, action: () => onLiberate() },
               { t: 'Mi plaza en el mapa', s: plaza ? `${plaza.floor} · ${plaza.num}` : '', icon: <Map size={22} className="text-purple" />, action: () => navigate('/mapa', { state: { highlightPlazaId: plaza?.id, floor: plaza?.floor } }) },
             ].map((q, i) => (
               <button key={i} onClick={q.action} className="bg-white rounded-xl p-3.5 border border-gray-line text-left active:bg-gray-bg transition-colors">
