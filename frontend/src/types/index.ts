@@ -11,6 +11,7 @@ export interface User {
   plate?: string;
   role: Role;
   status: UserStatus;
+  priority?: boolean;
   avatarColor: string;
   assignedPlaza?: {
     id: string;

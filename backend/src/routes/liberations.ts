@@ -74,13 +74,54 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     const lib = result.value;
     const libDate = lib.date;
 
-    // Obtener cola para esa fecha ordenada por posición
+    // Primero: intentar asignar a un usuario prioritario (floating con priority=true)
+    const priorityUsers = await prisma.user.findMany({
+      where: { priority: true, role: 'floating', status: 'active' },
+    });
+
+    let assigned = false;
+    for (const pUser of priorityUsers) {
+      const existingRes = await prisma.reservation.findFirst({
+        where: { userId: pUser.id, date: libDate, status: 'confirmed' },
+      });
+      if (existingRes) continue;
+
+      const ref = new Date(libDate);
+      const day = ref.getDay() === 0 ? 7 : ref.getDay();
+      const monday = new Date(ref); monday.setDate(ref.getDate() - (day - 1)); monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23, 59, 59, 999);
+      const weekCount = await prisma.reservation.count({
+        where: { userId: pUser.id, date: { gte: monday, lte: sunday }, status: 'confirmed' },
+      });
+      if (weekCount >= rules.weeklyQuotaPerUser) continue;
+
+      await prisma.reservation.create({
+        data: {
+          plazaId:      lib.plazaId,
+          userId:       pUser.id,
+          liberationId: lib.id,
+          date:         libDate,
+          halfDay:      lib.halfDay as never,
+        },
+      });
+      await sendPushToUser(pUser.id, {
+        title: '🎉 Te hemos asignado una plaza',
+        body: `Plaza ${plaza.num} (${plaza.floor}) reservada automáticamente para ti.`,
+        url: '/',
+      });
+      assigned = true;
+      assignedCount++;
+      break;
+    }
+
+    if (assigned) continue;
+
+    // Segundo: intentar asignar desde la cola
     const queueEntries = await prisma.waitingQueue.findMany({
       where: { date: libDate },
       orderBy: { position: 'asc' },
     });
 
-    let assigned = false;
     for (const entry of queueEntries) {
       // Verificar elegibilidad: sin reserva confirmada ese día
       const existingRes = await prisma.reservation.findFirst({
@@ -88,15 +129,18 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
       });
       if (existingRes) continue;
 
-      // Verificar cupo semanal
-      const ref = new Date(libDate);
-      const day = ref.getDay() === 0 ? 7 : ref.getDay();
-      const monday = new Date(ref); monday.setDate(ref.getDate() - (day - 1)); monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23, 59, 59, 999);
-      const weekCount = await prisma.reservation.count({
-        where: { userId: entry.userId, date: { gte: monday, lte: sunday }, status: 'confirmed' },
-      });
-      if (weekCount >= rules.weeklyQuotaPerUser) continue;
+      // Verificar cupo semanal (los usuarios fijos están exentos)
+      const queueUser = await prisma.user.findUnique({ where: { id: entry.userId } });
+      if (queueUser?.role !== 'fixed') {
+        const ref = new Date(libDate);
+        const day = ref.getDay() === 0 ? 7 : ref.getDay();
+        const monday = new Date(ref); monday.setDate(ref.getDate() - (day - 1)); monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6); sunday.setHours(23, 59, 59, 999);
+        const weekCount = await prisma.reservation.count({
+          where: { userId: entry.userId, date: { gte: monday, lte: sunday }, status: 'confirmed' },
+        });
+        if (weekCount >= rules.weeklyQuotaPerUser) continue;
+      }
 
       // Elegible → crear reserva y eliminar de la cola
       await prisma.reservation.create({

@@ -13,7 +13,7 @@ router.get('/users', async (_req: AuthRequest, res: Response) => {
   const users = await prisma.user.findMany({
     select: {
       id: true, name: true, email: true, phone: true, plate: true,
-      role: true, status: true, avatarColor: true,
+      role: true, status: true, priority: true, avatarColor: true,
       assignedPlaza: { select: { id: true, num: true, floor: true } },
     },
     orderBy: { createdAt: 'asc' },
@@ -45,6 +45,7 @@ router.put('/users/:id', async (req: AuthRequest, res: Response) => {
     name:            z.string().optional(),
     role:            z.enum(['fixed', 'floating', 'admin', 'guest']).optional(),
     status:          z.enum(['invited', 'pending', 'active', 'disabled']).optional(),
+    priority:        z.boolean().optional(),
     assignedPlazaId: z.string().nullable().optional(),
     plate:           z.string().optional(),
     phone:           z.string().optional(),

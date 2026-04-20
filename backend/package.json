@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build": "npx prisma generate && tsc",
     "start": "node dist/index.js",
     "db:push": "prisma db push",
@@ -27,9 +29,12 @@
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.14.9",
+    "@types/supertest": "^7.2.0",
     "@types/web-push": "^3.6.3",
     "prisma": "^5.14.0",
+    "supertest": "^7.2.2",
     "tsx": "^4.16.0",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.4"
   }
 }

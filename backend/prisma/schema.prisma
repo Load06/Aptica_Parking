@@ -42,6 +42,7 @@ model User {
   plate           String?
   role            Role        @default(floating)
   status          UserStatus  @default(pending)
+  priority        Boolean     @default(false)
   avatarColor     String      @default("#6A1873")
   resetToken      String?
   resetTokenExp   DateTime?

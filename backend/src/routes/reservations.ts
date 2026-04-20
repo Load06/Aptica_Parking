@@ -59,21 +59,24 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     await prisma.reservation.delete({ where: { id: lib.reservation.id } });
   }
 
-  // Regla: antelación máxima
+  const currentUser = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
   const rules = await prisma.adminRules.findUniqueOrThrow({ where: { id: 1 } });
-  const hoursAhead = (lib.date.getTime() - Date.now()) / 3_600_000;
-  if (hoursAhead > rules.advanceBookingHours) {
-    res.status(400).json({ error: `Solo puedes reservar con ${rules.advanceBookingHours}h de antelación` }); return;
-  }
 
-  // Regla: cupo semanal (próximos 7 días desde hoy)
-  const from = new Date(); from.setHours(0,0,0,0);
-  const to = new Date(from); to.setDate(from.getDate() + 6); to.setHours(23,59,59,999);
-  const weekCount = await prisma.reservation.count({
-    where: { userId: req.userId, date: { gte: from, lte: to }, status: 'confirmed' },
-  });
-  if (weekCount >= rules.weeklyQuotaPerUser) {
-    res.status(400).json({ error: 'Has alcanzado tu cupo semanal' }); return;
+  // Usuarios fijos están exentos de las restricciones de antelación y cupo semanal
+  if (currentUser.role !== 'fixed') {
+    const hoursAhead = (lib.date.getTime() - Date.now()) / 3_600_000;
+    if (hoursAhead > rules.advanceBookingHours) {
+      res.status(400).json({ error: `Solo puedes reservar con ${rules.advanceBookingHours}h de antelación` }); return;
+    }
+
+    const from = new Date(); from.setHours(0,0,0,0);
+    const to = new Date(from); to.setDate(from.getDate() + 6); to.setHours(23,59,59,999);
+    const weekCount = await prisma.reservation.count({
+      where: { userId: req.userId, date: { gte: from, lte: to }, status: 'confirmed' },
+    });
+    if (weekCount >= rules.weeklyQuotaPerUser) {
+      res.status(400).json({ error: 'Has alcanzado tu cupo semanal' }); return;
+    }
   }
 
   const reservation = await prisma.reservation.create({
@@ -115,19 +118,22 @@ router.post('/urgent', verifyJWT, async (req: AuthRequest, res: Response) => {
   });
 
   const existing = lib.reservation;
-  // Solo puede desplazar a usuarios floating (sin plaza fija)
-  if (existing && existing.user.role !== 'floating') {
+  // Solo puede desplazar a usuarios floating con reserva confirmada
+  if (existing && existing.status === 'confirmed' && existing.user.role !== 'floating') {
     res.status(400).json({ error: 'Solo puedes desplazar a usuarios sin plaza fija' }); return;
   }
 
   // Desplazar reserva existente si la hay
   if (existing) {
-    await prisma.reservation.update({ where: { id: existing.id }, data: { status: 'displaced' } });
-    await sendPushToUser(existing.userId, {
-      title: '⚠️ Tu reserva fue desplazada',
-      body: `Tu plaza (${lib.date.toLocaleDateString('es-ES')}) fue tomada por reserva urgente.`,
-      url: '/reservar',
-    });
+    if (existing.status === 'confirmed') {
+      await sendPushToUser(existing.userId, {
+        title: '⚠️ Tu reserva fue desplazada',
+        body: `Tu plaza (${lib.date.toLocaleDateString('es-ES')}) fue tomada por reserva urgente.`,
+        url: '/reservar',
+      });
+    }
+    // Borrar el registro existente para liberar el unique constraint en liberationId
+    await prisma.reservation.delete({ where: { id: existing.id } });
   }
 
   const reservation = await prisma.reservation.create({

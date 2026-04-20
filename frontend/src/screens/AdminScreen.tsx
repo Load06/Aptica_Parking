@@ -27,9 +27,10 @@ export function AdminScreen() {
   const [selected, setSelected] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
-  // Edit role / plaza
+  // Edit role / plaza / priority
   const [editRole, setEditRole] = useState<Role>('floating');
   const [editPlazaId, setEditPlazaId] = useState<string | null>(null);
+  const [editPriority, setEditPriority] = useState(false);
   const [allPlazas, setAllPlazas] = useState<Plaza[]>([]);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -43,6 +44,7 @@ export function AdminScreen() {
     if (selected) {
       setEditRole(selected.role as Role);
       setEditPlazaId(selected.assignedPlaza?.id ?? null);
+      setEditPriority(selected.priority ?? false);
       setFeedback('');
       setResetUrl('');
     }
@@ -93,6 +95,7 @@ export function AdminScreen() {
       await api.put(`/admin/users/${selected.id}`, {
         role: editRole,
         assignedPlazaId: editRole === 'fixed' ? editPlazaId : null,
+        priority: editRole === 'floating' ? editPriority : false,
       });
       setFeedback('Cambios guardados');
       api.get<User[]>('/admin/users').then(r => setUsers(r.data));
@@ -171,11 +174,12 @@ export function AdminScreen() {
                       {u.status !== 'active' && <Badge color={st.color as any}>{st.label}</Badge>}
                     </div>
                     <p className="text-[12px] text-gray-mid font-medium truncate">{u.email}</p>
-                    <div className="flex gap-1.5 mt-1">
+                    <div className="flex gap-1.5 mt-1 flex-wrap">
                       <Badge color="purple">{ROLE_LABELS[u.role]}</Badge>
                       {(u as any).assignedPlaza && (
                         <Badge color="blue">{(u as any).assignedPlaza.floor} · {(u as any).assignedPlaza.num}</Badge>
                       )}
+                      {u.priority && <Badge color="warn">⭐ Prioritario</Badge>}
                     </div>
                   </div>
                 </button>
@@ -311,6 +315,16 @@ export function AdminScreen() {
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {editRole === 'floating' && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[13px] font-bold text-ink">⭐ Usuario prioritario</p>
+                    <p className="text-[11px] text-gray-mid font-medium mt-0.5">Recibe plazas liberadas antes que la cola</p>
+                  </div>
+                  <Toggle checked={editPriority} onChange={setEditPriority} />
                 </div>
               )}
 
