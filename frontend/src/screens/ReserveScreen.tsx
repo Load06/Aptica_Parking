@@ -19,7 +19,8 @@ export function ReserveScreen() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const advance = rules.advanceBookingHours / 24;
+  const isFixed = user?.role === 'fixed';
+  const advance = isFixed ? undefined : rules.advanceBookingHours / 24;
 
   useEffect(() => {
     api.get('/reservations/my/weekly').then(r => setQuota(r.data));
@@ -57,7 +58,7 @@ export function ReserveScreen() {
     }
   };
 
-  const isQuotaFull = quota.used >= quota.quota;
+  const isQuotaFull = !isFixed && quota.used >= quota.quota;
 
   return (
     <div className="px-5 pt-4 pb-4">
@@ -65,7 +66,10 @@ export function ReserveScreen() {
       <div className="mb-5">
         <h1 className="text-[22px] font-extrabold text-ink tracking-[-0.6px]">Reservar plaza</h1>
         <p className="text-[13px] text-gray-mid font-medium mt-0.5">
-          Ventana: <span className="font-bold text-ink2">{rules.advanceBookingHours}h por adelantado</span>
+          {isFixed
+            ? <span className="font-bold text-ink2">Sin límite de antelación</span>
+            : <>Ventana: <span className="font-bold text-ink2">{rules.advanceBookingHours}h por adelantado</span></>
+          }
         </p>
       </div>
 

@@ -38,8 +38,9 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
   const firstName = user?.name?.split(' ')[0] ?? '';
   const plaza = user?.assignedPlaza;
   const myPlazaId = plaza?.id;
-  const advance = rules.advanceBookingHours / 24;
-  const isQuotaFull = quota.used >= quota.quota;
+  const isFixed = user?.role === 'fixed';
+  const advance = isFixed ? undefined : rules.advanceBookingHours / 24;
+  const isQuotaFull = !isFixed && quota.used >= quota.quota;
 
   useEffect(() => {
     api.get('/rules').then(r => setRules(r.data));
@@ -293,13 +294,19 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
 
       {error && <p className="text-[13px] text-red font-semibold bg-red-soft px-3 py-2 rounded-md mb-3">{error}</p>}
 
-      {libs.length === 0 && user?.role === 'floating' && !myReservation && (
+      {libs.length === 0 && user?.role === 'admin' && (
+        <p className="text-[14px] text-gray-mid font-medium py-4 text-center">No hay plazas liberadas para este día.</p>
+      )}
+
+      {libs.length === 0 && (user?.role === 'floating' || user?.role === 'fixed') && !myReservation && (
         <div className="rounded-xl border border-dashed border-gray-line bg-white p-5 text-center mb-2">
           <p className="text-[14px] font-bold text-ink mb-1">No hay plazas disponibles</p>
           <p className="text-[13px] text-gray-mid font-medium mb-4">
             {myQueueEntry
               ? `Estás en la posición Nº ${myQueueEntry.position} de la cola. Te avisaremos si se libera una plaza.`
-              : 'Apúntate a la cola y te asignaremos la primera plaza que se libere.'}
+              : user?.role === 'fixed'
+                ? 'Apúntate a la cola para reservar una plaza adicional cuando alguien libere la suya.'
+                : 'Apúntate a la cola y te asignaremos la primera plaza que se libere.'}
           </p>
           {myQueueEntry ? (
             <Button variant="ghost" fullWidth onClick={handleLeaveQueue} disabled={actionLoading === 'queue'}>
@@ -311,9 +318,6 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
             </Button>
           )}
         </div>
-      )}
-      {libs.length === 0 && user?.role !== 'floating' && (
-        <p className="text-[14px] text-gray-mid font-medium py-4 text-center">No hay plazas liberadas para este día.</p>
       )}
 
       <div className="flex flex-col gap-2">
@@ -370,6 +374,27 @@ export function ParkingScreen({ onLiberate }: ParkingScreenProps) {
           );
         })}
       </div>
+
+      {/* Cola para usuarios fijos cuando hay plazas disponibles pero quieren asegurar un día */}
+      {user?.role === 'fixed' && libs.length > 0 && !myReservation && (
+        <div className="rounded-xl border border-dashed border-gray-line bg-white p-4 flex items-center justify-between mt-3">
+          <div>
+            <p className="text-[13px] font-bold text-ink">¿Necesitas otra plaza?</p>
+            <p className="text-[11px] text-gray-mid font-medium mt-0.5">
+              {myQueueEntry ? `Cola · posición Nº ${myQueueEntry.position}` : 'Apúntate a la cola para una plaza extra'}
+            </p>
+          </div>
+          {myQueueEntry ? (
+            <Button size="sm" variant="ghost" onClick={handleLeaveQueue} disabled={actionLoading === 'queue'}>
+              Salir
+            </Button>
+          ) : (
+            <Button size="sm" variant="secondary" onClick={handleJoinQueue} disabled={actionLoading === 'queue'}>
+              <Clock size={14} /> Cola
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Accesos rápidos (fixed) */}
       {user?.role === 'fixed' && (
