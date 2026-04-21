@@ -4,3 +4,5 @@ dist/
 *.env.local
 .DS_Store
 frontend/package-lock.json
+Parking Aptica.zip
+design_handoff_aptica_parking/
