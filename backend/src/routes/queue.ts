@@ -48,7 +48,13 @@ router.delete('/:id', verifyJWT, async (req: AuthRequest, res: Response) => {
   if (entry.userId !== req.userId) {
     res.status(403).json({ error: 'No puedes salir de la cola de otro usuario' }); return;
   }
-  await prisma.waitingQueue.delete({ where: { id: req.params.id } });
+  await prisma.$transaction([
+    prisma.waitingQueue.delete({ where: { id: req.params.id } }),
+    prisma.waitingQueue.updateMany({
+      where: { date: entry.date, position: { gt: entry.position } },
+      data: { position: { decrement: 1 } },
+    }),
+  ]);
   res.json({ message: 'Saliste de la cola' });
 });
 
