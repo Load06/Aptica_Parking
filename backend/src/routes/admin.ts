@@ -98,9 +98,10 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
   if (targetId === req.userId) {
     return res.status(403).json({ error: 'No puedes eliminarte a ti mismo' });
   }
+  const existing = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!existing) { res.status(404).json({ error: 'Usuario no encontrado' }); return; }
   const adminCount = await prisma.user.count({ where: { role: 'admin' } });
-  const targetUser = await prisma.user.findUniqueOrThrow({ where: { id: targetId }, select: { role: true } });
-  if (targetUser.role === 'admin' && adminCount <= 1) {
+  if (existing.role === 'admin' && adminCount <= 1) {
     return res.status(403).json({ error: 'No se puede eliminar el único administrador' });
   }
   // 1. Delete reservations made by this user
