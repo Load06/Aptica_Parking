@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { verifyJWT, requireRole, AuthRequest } from '../middleware/auth';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { sendPushToUser } from '../lib/push';
 
@@ -32,9 +33,17 @@ router.post('/users', async (req: AuthRequest, res: Response) => {
   }).safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: body.error.flatten() }); return; }
 
-  const user = await prisma.user.create({
-    data: { ...body.data, status: body.data.role === 'fixed' ? 'invited' : 'active' },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: { ...body.data, status: body.data.role === 'fixed' ? 'invited' : 'active' },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      res.status(409).json({ error: 'Email ya registrado' }); return;
+    }
+    throw err;
+  }
   await prisma.auditLog.create({ data: { userId: req.userId, action: 'user_created', detail: user.email } });
   res.status(201).json(user);
 });
@@ -89,9 +98,10 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response) => {
   if (targetId === req.userId) {
     return res.status(403).json({ error: 'No puedes eliminarte a ti mismo' });
   }
+  const existing = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!existing) { res.status(404).json({ error: 'Usuario no encontrado' }); return; }
   const adminCount = await prisma.user.count({ where: { role: 'admin' } });
-  const targetUser = await prisma.user.findUniqueOrThrow({ where: { id: targetId }, select: { role: true } });
-  if (targetUser.role === 'admin' && adminCount <= 1) {
+  if (existing.role === 'admin' && adminCount <= 1) {
     return res.status(403).json({ error: 'No se puede eliminar el único administrador' });
   }
   // 1. Delete reservations made by this user
