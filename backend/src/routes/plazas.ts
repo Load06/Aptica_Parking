@@ -40,4 +40,11 @@ router.get('/availability', verifyJWT, async (req: AuthRequest, res: Response) =
   res.json(liberations);
 });
 
+// GET /plazas/:id
+router.get('/:id', verifyJWT, async (req: AuthRequest, res: Response) => {
+  const plaza = await prisma.plaza.findUnique({ where: { id: req.params.id } });
+  if (!plaza) { res.status(404).json({ error: 'Plaza no encontrada' }); return; }
+  res.json(plaza);
+});
+
 export default router;
