@@ -51,16 +51,29 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     }
   }
 
-  const created = await Promise.allSettled(
-    allDates.map(date =>
-      prisma.liberation.create({
-        data: { plazaId, userId: req.userId!, date, halfDay, recurrenceId },
-      })
-    )
-  );
+  const created: { id: string; date: Date; plazaId: string; userId: string; halfDay: string; recurrenceId: string | null; createdAt: Date }[] = [];
 
-  const succeededResults = created.filter(r => r.status === 'fulfilled') as PromiseFulfilledResult<{ id: string; date: Date; plazaId: string; userId: string; halfDay: string; recurrenceId: string | null; createdAt: Date }>[];
-  const succeeded = succeededResults.length;
+  for (const date of allDates) {
+    const conflict = await prisma.liberation.findFirst({
+      where: {
+        plazaId,
+        date,
+        halfDay: halfDay === 'full' ? { in: ['am', 'pm'] } : 'full',
+      },
+    });
+    if (conflict) {
+      res.status(409).json({ error: 'Ya existe una liberación que solapa este período' }); return;
+    }
+
+    try {
+      const lib = await prisma.liberation.create({
+        data: { plazaId, userId: req.userId!, date, halfDay, recurrenceId },
+      });
+      created.push(lib);
+    } catch { /* ignorar duplicados exactos por constraint de BD */ }
+  }
+
+  const succeeded = created.length;
 
   await prisma.auditLog.create({
     data: { userId: req.userId, action: 'plaza_liberated', detail: `${plazaId} × ${succeeded} días` },
@@ -70,8 +83,7 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
   const rules = await prisma.adminRules.findUniqueOrThrow({ where: { id: 1 } });
   let assignedCount = 0;
 
-  for (const result of succeededResults) {
-    const lib = result.value;
+  for (const lib of created) {
     const libDate = lib.date;
 
     // Primero: intentar asignar a un usuario prioritario (floating con priority=true)
