@@ -51,6 +51,12 @@ router.post('/', verifyJWT, async (req: AuthRequest, res: Response) => {
     }
   }
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (allDates.some(d => d < today)) {
+    res.status(400).json({ error: 'No se pueden crear liberaciones en fechas pasadas' }); return;
+  }
+
   const created: { id: string; date: Date; plazaId: string; userId: string; halfDay: string; recurrenceId: string | null; createdAt: Date }[] = [];
 
   for (const date of allDates) {
