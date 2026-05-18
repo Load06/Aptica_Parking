@@ -75,8 +75,9 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
 // POST /auth/forgot-password
 router.post('/forgot-password', async (req: Request, res: Response) => {
-  const { email } = z.object({ email: z.string().email() }).parse(req.body);
-  const user = await prisma.user.findUnique({ where: { email } });
+  const body = z.object({ email: z.string().email() }).safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: 'Datos inválidos' }); return; }
+  const user = await prisma.user.findUnique({ where: { email: body.data.email } });
   // Respuesta idéntica tanto si existe como si no (evita enumeración)
   if (user) {
     const token = crypto.randomBytes(32).toString('hex');
